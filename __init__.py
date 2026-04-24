@@ -74,7 +74,7 @@ Version 3.0
 '''
 
 bl_info = {
-    "name": "TrailPrint3D+",
+    "name": "TrailPrint3D",
     "blender": (5, 1, 0),
     "category": "Object",
     "author": "EmGi",
