@@ -275,9 +275,9 @@ class TP3D_Properties(bpy.types.PropertyGroup):
 
     col_wArea: FloatProperty(name= _("Water Threshold"), default = 1, description = _("Lakes smaller than the threshold won't be included"))
     col_wStreamWidth: FloatProperty(name= _("River Width"), default = 1.0, min=0.1, max=10.0, description = _("Adjusts the thickness of rivers and streams"))
-    col_wPondsActive: BoolProperty(name= _("Ponds & Lakes"), default=True, description = _("Include ponds and lakes (natural=water)"))
-    col_wSmallRiversActive: BoolProperty(name= _("Small Rivers"), default=True, description = _("Streams, canals, ditches and other minor waterways"))
-    col_wBigRiversActive: BoolProperty(name= _("Big Rivers"), default=True, description = _("Major named rivers (waterway with wikidata tag)"))
+    col_wPondsActive: BoolProperty(name= _("Ponds & Lakes"), default=False, description = _("Include ponds and lakes (natural=water)"))
+    col_wSmallRiversActive: BoolProperty(name= _("Small Rivers"), default=False, description = _("Streams, canals, ditches and other minor waterways"))
+    col_wBigRiversActive: BoolProperty(name= _("Big Rivers"), default=False, description = _("Major named rivers (waterway with wikidata tag)"))
     col_fActive: BoolProperty(name= _("Include Forests"), default=False, description = _("For Maps < 50Km Recommended"))
     col_fArea: FloatProperty(name= _("Threshold"), default = 10, description = _("Forests smaller than the threshold won't be included"))
     col_scrActive: BoolProperty(name= _("Include Scree"), default=False, description = _("Rocky/stony terrain. For Maps < 1000Km Recommended"))
@@ -298,8 +298,8 @@ class TP3D_Properties(bpy.types.PropertyGroup):
 
     show_water: BoolProperty(name= _("Water & Ocean"), default=False)
     show_roads: BoolProperty(name= _("Roads"), default=False)
-    el_sBigActive: BoolProperty(name= _("Big Streets"), default=True, description = f"primary, motorway, primary_link, motorway_link — limited to motorway only on maps < {const.ROADS_MAXSIZE}km")
-    el_sMedActive: BoolProperty(name= _("Medium Streets"), default=True, description = f"secondary, tertiary, secondary_link, tertiary_link — ignored on maps < {const.STREETS_MAJOR_ONLY_THRESHOLD}km")
+    el_sBigActive: BoolProperty(name= _("Big Streets"), default=False, description = f"primary, motorway, primary_link, motorway_link — limited to motorway only on maps < {const.ROADS_MAXSIZE}km")
+    el_sMedActive: BoolProperty(name= _("Medium Streets"), default=False, description = f"secondary, tertiary, secondary_link, tertiary_link — ignored on maps < {const.STREETS_MAJOR_ONLY_THRESHOLD}km")
     el_sSmallActive: BoolProperty(name= _("Small Streets"), default=False, description = f"residential, living_street, unclassified, service, footway — ignored on maps < {const.STREETS_PRIMARY_THRESHOLD}km")
     el_oActive: BoolProperty(name=_("Include Ocean"), default=False, description=_("Generate ocean surface cut along the coastline. Experimental"))
     el_oFlip: BoolProperty(name=_("Flip Ocean Side"), default=False, description=_("Flip the cutter normals if the ocean appears on the wrong side"))
