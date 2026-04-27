@@ -37,7 +37,7 @@ Automatically fetches and renders geographic data from OpenStreetMap:
 
 
 ### Export
-- Export to **STL**, **OBJ**, and **3MF** (3mf is using the [3MF Addon by Clonephaze](https://github.com/Clonephaze/Blender-3mf-Export))
+- Export to **STL**, **OBJ**, and **3MF** (3mf is using the [3MF Addon by Clonephaze](https://github.com/Clonephaze/3MF-Blender-Add-on---Maintained))
 - Configurable default export folder in addon preferences
 - Optional auto-export after generation
 
