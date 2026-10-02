@@ -121,6 +121,7 @@ def startup_function(scene, dummy=None):
     for scn in bpy.data.scenes:
         props.repair_invalid_shape(scn)
         props.ensure_road_types(scn.tp3d)
+        export.prefill_export_path(scn)
 
     utils.loadCollections(scene, dummy)
 
@@ -207,6 +208,7 @@ def _load_collections_deferred():
         for scn in bpy.data.scenes:
             props.repair_invalid_shape(scn)
             props.ensure_road_types(scn.tp3d)
+            export.prefill_export_path(scn)
         utils.loadCollections(None, None)
     except (AttributeError, RuntimeError, ReferenceError) as e:
         print(f"TrailPrint3D: deferred collection load failed: {e}")

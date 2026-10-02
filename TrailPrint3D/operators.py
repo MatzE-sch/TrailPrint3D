@@ -82,16 +82,14 @@ class TP3D_OT_export_stl(bpy.types.Operator):
     def execute(self, context):
         tp3d = context.scene.tp3d  # Access stored variables
 
-        exportPath = tp3d.get('export_path', None)
-
-        if not exportPath:
-            exportPath = addon_preferences.get_prefs().default_export_folder
+        exportPath = export.resolve_export_path(tp3d)
 
         if not exportPath:
             self.report({'ERROR'}, "'Export path' is Empty. Please select a Directory For the finished files")
             return {'CANCELLED'}
 
         exportPath = bpy.path.abspath(exportPath)
+        export.remember_export_dir(exportPath)
 
         if not exportPath or exportPath == "":
             self.report({'ERROR'}, "Export path is empty! Please select a valid folder.")
@@ -119,16 +117,14 @@ class TP3D_OT_export_obj(bpy.types.Operator):
     def execute(self, context):
         tp3d = context.scene.tp3d  # Access stored variables
 
-        exportPath = tp3d.get('export_path', None)
-
-        if not exportPath:
-            exportPath = addon_preferences.get_prefs().default_export_folder
+        exportPath = export.resolve_export_path(tp3d)
 
         if not exportPath:
             self.report({'ERROR'}, "'Export path' is Empty. Please select a Directory For the finished files")
             return {'CANCELLED'}
 
         exportPath = bpy.path.abspath(exportPath)
+        export.remember_export_dir(exportPath)
 
         if not exportPath or exportPath == "":
             self.report({'ERROR'}, "Export path is empty! Please select a valid folder.")
@@ -171,16 +167,14 @@ class TP3D_OT_export_three_mf(bpy.types.Operator):
 
         if installed:
 
-            exportPath = tp3d.get('export_path', None)
-
-            if not exportPath:
-                exportPath = addon_preferences.get_prefs().default_export_folder
+            exportPath = export.resolve_export_path(tp3d)
 
             if not exportPath:
                 self.report({'ERROR'}, "'Export path' is Empty. Please select a Directory For the finished files")
                 return {'CANCELLED'}
 
             exportPath = bpy.path.abspath(exportPath)
+            export.remember_export_dir(exportPath)
 
             if not exportPath or exportPath == "":
                 self.report({'ERROR'}, "Export path is empty! Please select a valid folder.")

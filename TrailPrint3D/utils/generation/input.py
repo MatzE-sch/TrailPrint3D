@@ -139,8 +139,13 @@ def _rg_validate_inputs(flags, gen_type: int = 0, locked_scale: float | None = N
         if not gpx_chain_path or gpx_chain_path == "":
             raise ValidationError("CHAIN path is empty! Please select a valid folder.")
         gpx_chain_path = bpy.path.abspath(gpx_chain_path)
+    from ...export import (  # deferred: export imports utils at module level
+        remember_export_dir,
+        resolve_export_path,
+    )
+
     if not exportPath:
-        exportPath = addon_preferences.get_prefs().default_export_folder
+        exportPath = resolve_export_path(tp3d)
     if not exportPath:
         raise ValidationError("Export path cant be empty")
     exportPath = bpy.path.abspath(exportPath)
@@ -150,6 +155,7 @@ def _rg_validate_inputs(flags, gen_type: int = 0, locked_scale: float | None = N
         raise ValidationError(
             f"Invalid export Directory: {exportPath}. Please select a valid Directory."
         )
+    remember_export_dir(exportPath)
     try:
         test_path = os.path.join(exportPath, ".tp3d_write_test")
         with open(test_path, "w") as f:

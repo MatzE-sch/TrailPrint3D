@@ -445,6 +445,11 @@ def repair_invalid_shape(scene):
         tp3d.shape = "HEXAGON"
 
 
+def export_path_update(self, context):
+    from . import export  # deferred: export imports utils, which imports props
+    export.remember_export_dir(self.export_path)
+
+
 # Define a Property Group to store variables
 class TP3D_PG_properties(bpy.types.PropertyGroup):
     file_path: StringProperty(
@@ -459,6 +464,7 @@ class TP3D_PG_properties(bpy.types.PropertyGroup):
         default="",
         maxlen=1024,
         subtype="DIR_PATH",  # Enables folder selection
+        update=export_path_update,
     )  # type: ignore
     chain_path: StringProperty(
         name=_(""),
