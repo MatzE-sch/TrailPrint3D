@@ -175,8 +175,11 @@ def _rg_validate_inputs(flags, gen_type: int = 0, locked_scale: float | None = N
         if "gpx_chain" in flags and "append_collection" not in flags:
             name_with_ext = os.path.basename(os.path.normpath(gpx_chain_path))
             name = os.path.splitext(name_with_ext)[0]
-        if "gpx_file" not in flags and "gpx_chain" not in flags:
-            name = "Terrain"
+        if name == "":  # no GPX to take the name from
+            from ...export import (
+                default_export_name,  # deferred to avoid circular import at load time
+            )
+            name = default_export_name()
 
     modelname: str = name
     tp3d.modelname = modelname

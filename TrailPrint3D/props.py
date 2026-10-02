@@ -22,10 +22,10 @@ from . import temp, utils
 def _slicer_profile_items(self, context) -> list[tuple[str, str, str]]:
     # Combine the description parts into one string
     desc = (
-        "Use the built-in Bambu A1 template. "
+        "Plain 3MF: geometry and colours only, no printer/filament settings. "
         "Add your own profiles in Preferences → Add-ons → 3MF Format → Advanced"
     )
-    items = [("NONE", "Built-in defaults", desc)]
+    items = [("NONE", "None (plain 3MF)", desc)]
 
     import importlib
 
