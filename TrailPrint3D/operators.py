@@ -2397,6 +2397,9 @@ def _collect_existing_maps():
             "shape": shape, "bounds": bounds, "name": obj.name,
             "scaleHor": obj.get("Horizontal Scale"),
             "additionalExtrusion": obj.get("AdditionalExtrusion"),
+            # The exact Blender shape (CIRCLE/OCTAGON/SQUARE/...), so the Map
+            # Generator can load the map back as its editable area.
+            "blenderShape": obj.get("Shape"),
         }
         if shape == "custom" and obj.get("BoundaryPolygon"):
             try:

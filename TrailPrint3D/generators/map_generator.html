@@ -38,9 +38,16 @@
             <input type="range" id="resolutionSlider" min="1" max="10" step="1" value="4" style="width: 100%; accent-color: #007bff;">
         </div>
         <div class="field-row">
-            <label for="objSizeInput">Size (mm)</label>
+            <label class="lock-label" title="Set the size by hand (unticked: derived from the area and the scale)">
+                <input type="checkbox" id="sizeEnabled" checked> Size (mm)</label>
             <input type="number" id="objSizeInput" min="5" max="10000" step="1" value="100" title="Object Size">
         </div>
+        <div class="field-row">
+            <label class="lock-label" title="Set the map scale by hand (unticked: derived from the area and the size)">
+                <input type="checkbox" id="scaleEnabled"> Scale 1:</label>
+            <input type="number" id="scaleInput" min="100" step="100" placeholder="—" style="width: 84px;" title="Map scale at the area's centre: 1 mm on the print = this many mm in reality">
+        </div>
+        <div id="scaleHint" style="display:none; font-size: 10px; color: #777; margin-top: -10px;">Size + scale fix the area's size — drag its centre to move it.</div>
         <hr class="sidebar-divider">
         <input type="file" id="gpxInput" accept=".gpx" style="display: none;">
         <button id="importGpx" style="padding: 12px 20px; background: #2a8a2a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Import GPX</button>
@@ -319,7 +326,9 @@
                 coords: coords,
                 prefetch: tp3dPrefetchState(),
                 gpxPaths: gpxPaths,
-                gpxNames: gpxNames
+                gpxNames: gpxNames,
+                points: tp3dLocationPointsState(),
+                sizeScale: tp3dSizeScaleState()
             };
         }
 
@@ -409,6 +418,7 @@
                         document.getElementById('resolutionValue').textContent = s.resolution;
                     }
                     if (s.objSize != null) document.getElementById('objSizeInput').value = s.objSize;
+                    if (s.points) tp3dRestoreLocationPoints(s.points);
                     if (s.gpxPaths && s.gpxPaths.length) {
                         gpxPaths = s.gpxPaths;
                         gpxNames = s.gpxNames || [];
@@ -448,6 +458,7 @@
                         bindMoveHandle();
                         renderShapePreview();
                     }
+                    tp3dRestoreSizeScale(s.sizeScale);
                     updateSendState();
                     updateStatus();
                     tp3dRestorePrefetch(s.prefetch);
@@ -468,8 +479,9 @@
                 .then(function(s) {
                     console.log('[TP3D picker] /get_state returned:', s);
                     tp3dApplyStateSnapshot(s);
+                    tp3dUndoBaseline();
                 })
-                .catch(function() { updateSendState(); updateStatus(); });
+                .catch(function() { updateSendState(); updateStatus(); tp3dUndoBaseline(); });
         }
 
         function loadExistingMaps() {
@@ -484,6 +496,7 @@
                             fill: true, fillOpacity: 0.15, fillColor: '#9b59b6'
                         }, m.polygon);
                         if (m.name) layer.bindTooltip(m.name, { sticky: true });
+                        tp3dBindExistingMapEdit(layer, m);
                         existingMapsLayer.addLayer(layer);
                     });
                 })
@@ -653,7 +666,9 @@
             // off() first so re-enabling (e.g. after an edge-drag below, or
             // switching back from 'center' mode) can't stack duplicate listeners.
             layer.off('edit');
-            layer.editing.enable();
+            // With Size and Scale both set (map_tools.js) the area's size is
+            // fixed -- no resize handles, only the move handle.
+            if (tp3dRectSizeLocked()) layer.editing.disable(); else layer.editing.enable();
             layer.on('edit', function() {
                 var b = layer.getBounds();
                 coords = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest(), type: currentShape };
@@ -664,6 +679,7 @@
         }
 
         __RECT_EDITOR_JS__
+        __MAP_TOOLS_JS__
         var drawControl = makeDrawControl();
         map.addControl(drawControl);
         map.on('moveend', saveState);
@@ -1138,6 +1154,7 @@
         // Default Size to the scene's current Object Size (restoreState below
         // overrides this if a previously-saved value exists).
         document.getElementById('objSizeInput').value = OBJ_SIZE;
+        __UNDO_HISTORY_JS__
         restoreState();
         loadExistingMaps();
         loadExistingTrails();

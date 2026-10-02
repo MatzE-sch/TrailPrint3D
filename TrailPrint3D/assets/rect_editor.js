@@ -42,6 +42,81 @@ function boundsCenter(b) {
     return { lat: (b.north + b.south) / 2, lng: (b.east + b.west) / 2 };
 }
 
+// True while the drawn area's SIZE is fixed (map_tools.js: Size and Scale
+// both set) -- then only the move handle stays, no resize handles/border drag.
+function tp3dRectSizeLocked() {
+    return typeof window.tp3dSizeLocked === 'function' && window.tp3dSizeLocked();
+}
+
+// ── Corner snapping ──────────────────────────────────────────────────────
+// A corner pressed/released on a marker (a location-panel point, a POI, ...
+// -- whatever tp3dSnapProviders in location_panel.js lists) takes that
+// marker's exact coordinates instead of the point under the cursor: a pin
+// icon sits above its point, so the raw click position would be off. While
+// drawing, markers let clicks through (#map.tp3d-drawing CSS) so the draw
+// tools see them at all.
+function tp3dSnapMarkers() {
+    var out = [];
+    if (typeof tp3dSnapProviders !== 'undefined') {
+        tp3dSnapProviders.forEach(function(fn) { out = out.concat(fn() || []); });
+    }
+    return out;
+}
+
+function tp3dSnapEvent(e) {
+    var oe = e && e.originalEvent;
+    if (!oe) return e;
+    var pt = (oe.touches && oe.touches[0]) || (oe.changedTouches && oe.changedTouches[0]) || oe;
+    if (pt.clientX == null) return e;
+    var pad = 3;
+    var hit = tp3dSnapMarkers().find(function(m) {
+        var el = m.getElement && m.getElement();
+        if (!el || !map.hasLayer(m)) return false;
+        var r = el.getBoundingClientRect();
+        return pt.clientX >= r.left - pad && pt.clientX <= r.right + pad
+            && pt.clientY >= r.top - pad && pt.clientY <= r.bottom + pad;
+    });
+    return hit ? L.extend({}, e, { latlng: hit.getLatLng() }) : e;
+}
+
+function tp3dSetDrawing(on) { map.getContainer().classList.toggle('tp3d-drawing', on); }
+
+L.Draw.Rectangle.prototype._onMouseDown = function(e) {
+    return L.Draw.SimpleShape.prototype._onMouseDown.call(this, tp3dSnapEvent(e));
+};
+L.Draw.Rectangle.prototype._onMouseMove = function(e) {
+    return L.Draw.SimpleShape.prototype._onMouseMove.call(this, tp3dSnapEvent(e));
+};
+map.on(L.Draw.Event.DRAWSTART, function() { tp3dSetDrawing(true); });
+map.on(L.Draw.Event.DRAWSTOP, function() { tp3dSetDrawing(false); });
+
+// Replaces the drawn area (null clears it) and rebuilds its handles for the
+// current draw mode -- used by undo (undo_history.js) and by loading an
+// existing map as the area (map_tools.js). Doesn't touch currentShape.
+function tp3dSetDrawnArea(c, center) {
+    drawnItems.clearLayers();
+    editHandles.clearLayers();
+    moveHandleLayer.clearLayers();
+    syncCenterHandles = null;
+    rectLayer = null;
+    shapeCenter = null;
+    coords = c ? { north: c.north, south: c.south, east: c.east, west: c.west, type: currentShape } : null;
+    if (coords) {
+        var rect = previewDrawnRect(coords);
+        if (drawMode === 'center') {
+            shapeCenter = center ? { lat: center.lat, lng: center.lng } : boundsCenter(coords);
+            bindCenterEdit();
+        } else {
+            bindLiveEdit(rect);
+        }
+        bindCornerDrag(rect);
+        bindMoveHandle();
+    }
+    tp3dOnShapeChanged();
+    updateSendState();
+    updateStatus();
+}
+
 function previewDrawnRect(bounds) {
     drawnItems.clearLayers();
     var style = tp3dRectStyle();
@@ -201,6 +276,7 @@ function bindMoveHandle() {
 // sync with the shape.
 function bindCornerDrag(layer) {
     layer.off('mousedown', layer._tp3dCornerDown);
+    if (tp3dRectSizeLocked()) return;
     layer._tp3dCornerDown = function(e) {
         L.DomEvent.stopPropagation(e);
         var wasCornerEditing = drawMode === 'corner' && layer.editing && layer.editing.enabled();
@@ -271,11 +347,13 @@ function disarmDraw() {
 function armCenterDraw() {
     map.dragging.disable();
     map.getContainer().style.cursor = 'crosshair';
+    tp3dSetDrawing(true);
     function onFirstMouseDown(e) {
         cancelCenterDraw = null;
         drawArmed = false;
-        var center = e.latlng;
+        var center = tp3dSnapEvent(e).latlng;
         function onMove(e2) {
+            e2 = tp3dSnapEvent(e2);
             var dLat = Math.abs(e2.latlng.lat - center.lat);
             var dLng = Math.abs(e2.latlng.lng - center.lng);
             previewDrawnRect({
@@ -284,10 +362,12 @@ function armCenterDraw() {
             });
         }
         function onUp(e3) {
+            e3 = tp3dSnapEvent(e3);
             map.off('mousemove', onMove);
             map.off('mouseup', onUp);
             map.dragging.enable();
             map.getContainer().style.cursor = '';
+            tp3dSetDrawing(false);
             var dLat = Math.abs(e3.latlng.lat - center.lat);
             var dLng = Math.abs(e3.latlng.lng - center.lng);
             finalizeCenterShape({
@@ -303,6 +383,7 @@ function armCenterDraw() {
         map.off('mousedown', onFirstMouseDown);
         map.dragging.enable();
         map.getContainer().style.cursor = '';
+        tp3dSetDrawing(false);
     };
 }
 
@@ -334,7 +415,7 @@ function finalizeCenterShape(bounds, center) {
 function bindCenterEdit() {
     editHandles.clearLayers();
     syncCenterHandles = null;
-    if (!coords || !shapeCenter) return;
+    if (!coords || !shapeCenter || tp3dRectSizeLocked()) return;
 
     function handleIcon() {
         return L.divIcon({ className: 'edge-handle', iconSize: [10, 10], iconAnchor: [5, 5] });

@@ -437,3 +437,23 @@ button.element-chip:active { background: rgba(255,255,255,0.16); }
 @keyframes prefetch-spin { to { transform: rotate(360deg); } }
 #prefetchInfo .prefetch-subrow { padding-left: 16px; font-size: 10.5px; line-height: 1.7; }
 #prefetchInfo .prefetch-subrow .prefetch-swatch { width: 7px; height: 7px; }
+
+/* ── Location panel: ⇄ swap button, right-click menu (location_panel.js) ── */
+#coordSearchBody #swapLatLon { padding: 4px 5px; font-weight: normal; }
+#tp3dCtxMenu { position: fixed; z-index: 3000; display: none; min-width: 140px; background: #262626;
+    border: 1px solid #555; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); padding: 4px 0;
+    font-size: 12px; color: #eee; }
+#tp3dCtxMenu .ctx-title { padding: 4px 12px 6px; color: #999; font-size: 11px; border-bottom: 1px solid #3a3a3a;
+    margin-bottom: 3px; white-space: nowrap; }
+#tp3dCtxMenu .ctx-item { padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+#tp3dCtxMenu .ctx-item:hover { background: #007bff; }
+#tp3dCtxMenu .ctx-item.danger:hover { background: #b33; }
+
+/* While a rectangle is being drawn, markers let clicks through to the map
+   (rect_editor.js snaps a corner placed on one to its exact position). */
+#map.tp3d-drawing .leaflet-marker-icon { pointer-events: none; }
+
+/* Size / scale lock (map_tools.js) */
+.lock-label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.lock-label input { accent-color: #007bff; margin: 0; }
+.field-row input[type=number]:read-only { color: #888; background: #222; border-style: dashed; }

@@ -72,6 +72,14 @@ var baseLayers = {
     'Esri Topo': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
         referrerPolicy: TP3D_TILE_REFERRER_POLICY,
         attribution: 'Tiles &copy; Esri &mdash; Esri and the GIS User Community'
+    }),
+    // Pure shaded relief, no labels/roads -- shows the raw landform. Tiles
+    // only go to z13; beyond that Leaflet upscales instead of going blank.
+    'Hillshade': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
+        maxNativeZoom: 13,
+        maxZoom: 19,
+        referrerPolicy: TP3D_TILE_REFERRER_POLICY,
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri'
     })
 };
 var activeBaseLayerName = 'OpenStreetMap';
