@@ -516,6 +516,7 @@ class _Handler(BaseHTTPRequestHandler):
     advanced_settings_json: bytes = b'{}'
     element_source: str = 'OSM'
     dem_bounds_json: bytes = b'null'
+    poi_state_json: bytes = b'{}'
     obj_size: float = 100.0
     html_path: pathlib.Path = _HTML_PATH
     state_path: pathlib.Path = _STATE_PATH
@@ -587,6 +588,36 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'model/gltf-binary')
             self.send_header('Content-Length', str(len(body)))
             self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == '/get_poi_state':
+            # Points of interest + label-frame settings for a page that
+            # previews the (Premium) POI frame -- see start_picker's poi_state.
+            body = self.poi_state_json
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == '/poi_font':
+            # The font Blender builds POI labels with, so the page's label
+            # preview measures text the same way.
+            try:
+                font_path = json.loads(self.poi_state_json).get('fontPath') or ''
+                body = pathlib.Path(font_path).read_bytes() if font_path else b''
+            except (OSError, ValueError):
+                body = b''
+            if not body:
+                self.send_response(404)
+                self.end_headers()
+                return
+            ctype = {'.woff2': 'font/woff2', '.woff': 'font/woff', '.otf': 'font/otf'}.get(
+                pathlib.Path(font_path).suffix.lower(), 'font/ttf')
+            self.send_response(200)
+            self.send_header('Content-Type', ctype)
+            self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)
             return
@@ -988,7 +1019,7 @@ def start_picker(result_path: str, existing_maps: list | None = None, existing_t
                   obj_size: float = 100.0, html_path: 'pathlib.Path | str | None' = None,
                   element_states: dict | None = None, settings_state: dict | None = None,
                   advanced_settings: dict | None = None, dem_bounds: dict | None = None,
-                  element_source: str | None = None) -> HTTPServer:
+                  element_source: str | None = None, poi_state: dict | None = None) -> HTTPServer:
     """Start the HTTP server, open the page in the browser, and return the server.
 
     The server writes confirmed coordinate JSON to *result_path* on POST /confirm,
@@ -1060,6 +1091,11 @@ def start_picker(result_path: str, existing_maps: list | None = None, existing_t
     element_status.js/settings_modal.js), so this drives their
     element-status strip and Settings modal Elements tab, switching between
     the OSM and WorldCover chip/card sets.
+
+    *poi_state*, if given, is {"pois": [...], "settings": {...}, "fontPath": str}
+    -- the scene's points of interest and POI-frame settings (built by the
+    Premium POI frame code), served on GET /get_poi_state with the label font
+    on GET /poi_font, so a page can preview the frame the way Blender builds it.
     """
     global _active_server, _pending_toggles, _pending_settings, _pending_advanced_settings, _pending_prefetch
     global _pending_model_previews
@@ -1102,6 +1138,7 @@ def start_picker(result_path: str, existing_maps: list | None = None, existing_t
     _Handler.advanced_settings_json = json.dumps(advanced_settings or {}).encode('utf-8')
     _Handler.element_source = element_source or 'OSM'
     _Handler.dem_bounds_json = json.dumps(dem_bounds).encode('utf-8')
+    _Handler.poi_state_json = json.dumps(poi_state or {}).encode('utf-8')
     _Handler.obj_size = obj_size or 100.0
     _Handler.html_path = html_path
     _Handler.state_path = state_path

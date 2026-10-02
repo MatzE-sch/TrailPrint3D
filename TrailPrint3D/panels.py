@@ -923,6 +923,46 @@ class TP3D_PT_advanced(bpy.types.Panel):
             )
             if props.pinCutout:
                 box.prop(props, "pinCutoutClearance")
+
+        # --- POINTS OF INTEREST ---
+        # Labelled POI frame (Premium): POIs are placed in the Map Generator
+        # or at the 3D cursor; the list/operators are registered by premium/.
+        layout.prop(
+            props,
+            "show_poi",
+            icon="TRIA_DOWN" if props.show_poi else "TRIA_RIGHT",
+            emboss=False,
+        )
+        if props.show_poi:
+            box = layout.box()
+            if not temp.PREMIUMVERSION:
+                box.operator("tp3d.terrain_dummy", text=_("POI Label Frame"), icon="LOCKED")
+            else:
+                row = box.row()
+                row.template_list("TP3D_UL_pois", "", props, "pois", props, "poi_index", rows=3)
+                col = row.column(align=True)
+                col.operator("tp3d.poi_add", text="", icon="ADD")
+                col.operator("tp3d.poi_remove", text="", icon="REMOVE")
+                if 0 <= props.poi_index < len(props.pois):
+                    poi = props.pois[props.poi_index]
+                    row = box.row(align=True)
+                    row.prop(poi, "lat", text=_("Lat"))
+                    row.prop(poi, "lon", text=_("Lon"))
+                    if poi.direction == "CUSTOM":
+                        box.prop(poi, "angle")
+
+                row = box.row()
+                row.label(text=_("Frame Settings"))
+                row.operator("tp3d.poi_reset_settings", text="", icon="LOOP_BACK")
+                col = box.column(align=True)
+                col.prop(props, "poi_frameWall")
+                col.prop(props, "poi_bridgeWidth")
+                col.prop(props, "poi_tipWidth")
+                col.prop(props, "poi_thickness")
+                col.prop(props, "poi_labelSize")
+                col.prop(props, "poi_textDepth")
+                col.prop(props, "poi_clearance")
+                box.operator("tp3d.poi_frame", icon="MOD_BUILD")
                 draw_wrapped_label(
                     box,
                     context,

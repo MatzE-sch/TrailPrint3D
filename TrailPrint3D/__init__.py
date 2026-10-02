@@ -105,6 +105,11 @@ _PREMIUM_CLASS_NAMES = [
     "TP3D_OT_popup_heightmap",
     "TP3D_OT_map_picker",
     "TP3D_OT_sliding_puzzle_configurator",
+    "TP3D_UL_pois",
+    "TP3D_OT_poi_frame",
+    "TP3D_OT_poi_reset_settings",
+    "TP3D_OT_poi_add",
+    "TP3D_OT_poi_remove",
 ]
 
 
@@ -158,6 +163,7 @@ def register():
     # TP3D_RoadTypeItem must be registered before TP3D_PG_properties -- the
     # latter's road_types = CollectionProperty(type=TP3D_RoadTypeItem) needs
     # that type to already be a registered RNA struct.
+    bpy.utils.register_class(props.TP3D_PG_poi)
     bpy.utils.register_class(props.TP3D_RoadTypeItem)
     bpy.utils.register_class(props.TP3D_PG_properties)
     bpy.app.translations.register(const.ADDON_NAME, translation.translations_dict)
@@ -244,6 +250,11 @@ def unregister():
 
     try:
         bpy.utils.unregister_class(props.TP3D_RoadTypeItem)
+    except RuntimeError:
+        pass
+
+    try:
+        bpy.utils.unregister_class(props.TP3D_PG_poi)
     except RuntimeError:
         pass
 

@@ -37,6 +37,11 @@ def save_myproperties_to_csv(filename):
                     writer.writerow([f"road_types.{item.road_id}", item.active])
                 continue
 
+            if p.type in {'COLLECTION', 'POINTER'}:
+                # Other collections (e.g. the POI list) and object pointers
+                # aren't preset values.
+                continue
+
             try:
                 value = getattr(props, name)
             except AttributeError:

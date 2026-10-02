@@ -197,6 +197,43 @@ ROAD_TYPE_DEFS = [
 _ROAD_TYPE_IDS = {d[0] for d in ROAD_TYPE_DEFS}
 
 
+POI_DIRECTION_ITEMS = [
+    ("AUTO", _("Auto"), _("Run the bridge to the nearest frame edge")),
+    ("N", _("North"), ""),
+    ("NE", _("North-East"), ""),
+    ("E", _("East"), ""),
+    ("SE", _("South-East"), ""),
+    ("S", _("South"), ""),
+    ("SW", _("South-West"), ""),
+    ("W", _("West"), ""),
+    ("NW", _("North-West"), ""),
+    ("CUSTOM", _("Custom"), _("Use the Angle value (set by dragging the bridge in the Map Generator)")),
+]
+
+
+class TP3D_PG_poi(bpy.types.PropertyGroup):
+    """One point of interest for the (Premium) POI label frame."""
+
+    name: StringProperty(name=_("Label"), default="", description=_("Text shown on the POI's bridge"))  # type: ignore
+    lat: FloatProperty(name=_("Latitude"), default=0.0, precision=6)  # type: ignore
+    lon: FloatProperty(name=_("Longitude"), default=0.0, precision=6)  # type: ignore
+    enabled: BoolProperty(name=_("Enabled"), default=True, description=_("Include this POI in the frame"))  # type: ignore
+    direction: EnumProperty(
+        name=_("Direction"),
+        items=POI_DIRECTION_ITEMS,
+        default="AUTO",
+        description=_("Which way the bridge runs from the POI to the frame"),
+    )  # type: ignore
+    angle: FloatProperty(
+        name=_("Angle"),
+        default=0.0,
+        min=-360.0,
+        max=360.0,
+        precision=1,
+        description=_("Custom bridge direction in degrees, counter-clockwise from east"),
+    )  # type: ignore
+
+
 class TP3D_RoadTypeItem(bpy.types.PropertyGroup):
     """One row of the Roads UIList. `name` (inherited) holds the translated
     display label; `road_id` is the stable, untranslated lookup key."""
@@ -1427,6 +1464,17 @@ class TP3D_PG_properties(bpy.types.PropertyGroup):
         ),
     )  # type: ignore
 
+    # Points of interest + POI label frame settings (the frame itself is Premium).
+    pois: CollectionProperty(type=TP3D_PG_poi)  # type: ignore
+    poi_index: IntProperty(name="POI Index", default=0)  # type: ignore
+    poi_frameWall: FloatProperty(name=_("Frame Wall (mm)"), default=1.0, min=0.3, soft_max=10.0, description=_("Thickness of the frame wall running along the map edge"))  # type: ignore
+    poi_bridgeWidth: FloatProperty(name=_("Bridge Width (mm)"), default=0.0, min=0.0, soft_max=20.0, description=_("Width of the bridges' top plate where the label sits. 0 = sized to fit the text"))  # type: ignore
+    poi_tipWidth: FloatProperty(name=_("Tip Width (mm)"), default=0.5, min=0.3, soft_max=5.0, description=_("Width of the thin part of each bridge past its label, down to the POI"))  # type: ignore
+    poi_labelSize: FloatProperty(name=_("Text Size (mm)"), default=3.75, min=1.0, soft_max=15.0, description=_("Capital-letter height of the labels. Long labels shrink to fit their bridge"))  # type: ignore
+    poi_thickness: FloatProperty(name=_("Plate Thickness (mm)"), default=1.5, min=0.6, soft_max=5.0, description=_("Thickness of the bridges and the frame's top (the labels' plate, the thin section and the leg down to the POI)"))  # type: ignore
+    poi_textDepth: FloatProperty(name=_("Text Depth (mm)"), default=0.6, min=0.2, soft_max=3.0, description=_("How deep the labels are inlaid into the top face (printed as the first layers in a second color)"))  # type: ignore
+    poi_clearance: FloatProperty(name=_("Clearance (mm)"), default=0.2, min=0.0, soft_max=1.0, description=_("Vertical gap between the frame's underside and the terrain"))  # type: ignore
+
     generation_mode: EnumProperty(
         name="Generation Mode",
         items=[
@@ -1473,6 +1521,7 @@ class TP3D_PG_properties(bpy.types.PropertyGroup):
     show_map: BoolProperty(name=_("Map"), default=False)  # type: ignore
     show_ags: BoolProperty(name=_("Advanced Generation Settings"), default=False)  # type: ignore
     show_pin: BoolProperty(name=_("Pin"), default=False)  # type: ignore
+    show_poi: BoolProperty(name=_("Points of Interest"), default=False)  # type: ignore
     show_special: BoolProperty(name=_("Special"), default=False)  # type: ignore
     show_postProcess: BoolProperty(name=_("Post Process"), default=False)  # type: ignore
     show_api: BoolProperty(name=_("API"), default=False)  # type: ignore

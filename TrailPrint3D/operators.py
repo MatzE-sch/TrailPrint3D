@@ -3050,6 +3050,16 @@ class TP3D_OT_puzzle_configurator(bpy.types.Operator):
         return {'FINISHED'}
 
 
+def _premium_poi_frame():
+    """The Premium POI label frame module (premium/poi_frame_pe.py), or None
+    on a free build -- never imported at module level (see AGENTS.md §15)."""
+    try:
+        from .premium import poi_frame_pe  # type: ignore[import]
+    except ImportError:
+        return None
+    return poi_frame_pe
+
+
 class TP3D_OT_map_generator(bpy.types.Operator):
     bl_idname = "tp3d.map_generator"
     bl_label = "Map Generator"
@@ -3141,6 +3151,9 @@ class TP3D_OT_map_generator(bpy.types.Operator):
         # multi-file GPX input (see its gpxInput element).
         html_filename = 'premium/generators/map_generator_pe.html' if temp.PREMIUMVERSION else 'generators/map_generator.html'
         html_path = pathlib.Path(__file__).parent / html_filename
+        # Points of interest + label-frame preview (Premium only).
+        poi_module = _premium_poi_frame()
+        poi_state = poi_module.poi_state_for_picker(context.scene.tp3d) if poi_module else None
         self._server = mp.start_picker(
             self._result_path,
             existing_maps=_collect_existing_maps(),
@@ -3152,6 +3165,7 @@ class TP3D_OT_map_generator(bpy.types.Operator):
             advanced_settings=utils.build_advanced_settings_state(context.scene.tp3d),
             dem_bounds=_dem_coverage_overlay(),
             element_source=context.scene.tp3d.elementSource,
+            poi_state=poi_state,
         )
 
         wm = context.window_manager
@@ -3259,8 +3273,14 @@ class TP3D_OT_map_generator(bpy.types.Operator):
         bounds = data.get('bounds')
         gpx_paths = data.get('gpx_paths', [])
         geojson_paths = data.get('geojson_paths', [])
+        poi_module = _premium_poi_frame()
 
         if not bounds and not gpx_paths and not geojson_paths:
+            if poi_module and data.get('pois'):
+                # POI-only send: label the maps already in the scene.
+                poi_module.apply_picker_result(context, data, [], overlay, 0.1)
+                self.report({'INFO'}, f"Stored {len(props.pois)} POI(s)")
+                return
             self.report({'WARNING'}, "Nothing to generate — draw a shape first")
             return
 
@@ -3548,6 +3568,11 @@ class TP3D_OT_map_generator(bpy.types.Operator):
             blank.select_set(True)
             bpy.context.view_layer.objects.active = blank
             utils._rg_export(tile_gen)
+
+        # POI label frame (Premium) on the finished tile -- a separate part,
+        # built after the export above so it isn't merged into the map file.
+        if poi_module:
+            poi_module.apply_picker_result(context, data, [blank], overlay, 0.995)
 
         bpy.context.scene.tp3d["o_time"] = f"Script ran for {time.time() - start_time:.0f} seconds"
         export.save_history_thumbnail(data.get('history_id'), [blank])
