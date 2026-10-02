@@ -7,6 +7,12 @@
 # Set TP3D_AUTORELOAD=1 to also reload automatically whenever a .py in the
 # addon changes on disk.
 #
+# Free vs. Premium: start with TP3D_NO_PREMIUM=1 to run as the free build
+# (premium/ is unlinked from the package), or press Shift+F8 in a running
+# session to switch between free and premium (reloads the addon).
+#
+#   TP3D_NO_PREMIUM=1 blender --python dev_start.py
+#
 # Why not the Extensions system: blender_manifest.toml pins cp313 wheels, so
 # Blender builds running Python 3.14 (e.g. Manjaro's 5.2) refuse to enable the
 # extension. This loads the package as a plain legacy addon instead; relative
@@ -16,7 +22,7 @@
 # sys.path straight from the .whl files.
 #
 # premium/ is a separate (private) git checkout at the repo root, linked into
-# the package as TrailPrint3D/premium -- see _ensure_premium_link().
+# the package as TrailPrint3D/premium -- see _set_premium_link().
 
 import glob
 import os
@@ -32,18 +38,33 @@ ADDON = "TrailPrint3D"
 ADDON_DIR = os.path.join(REPO, ADDON)
 
 
-def _ensure_premium_link():
+# Whether the next (re)load runs with premium. TrailPrint3D/premium is the
+# only way the addon reaches premium code (register() checks
+# premium/operators_pe.py, other imports are try/except ImportError), so
+# without the link it behaves exactly like the free build.
+premium_enabled = os.environ.get("TP3D_NO_PREMIUM") != "1"
+
+
+def _set_premium_link(enabled):
     """premium/ lives at the repo root but must be importable as
-    TrailPrint3D.premium for register() to detect it."""
+    TrailPrint3D.premium for register() to detect it. Link it in for a
+    premium run, unlink it for a free run (only ever removes the symlink,
+    never a real directory)."""
     link = os.path.join(ADDON_DIR, "premium")
     src = os.path.join(REPO, "premium")
-    if os.path.exists(link) or not os.path.isdir(src):
-        return
-    try:
-        os.symlink(os.path.relpath(src, ADDON_DIR), link)
-        print(f"[dev] linked {link} -> ../premium")
-    except OSError as e:
-        print(f"[dev] could not link premium/: {e}")
+    if enabled:
+        if os.path.lexists(link) or not os.path.isdir(src):
+            return
+        try:
+            os.symlink(os.path.relpath(src, ADDON_DIR), link)
+            print(f"[dev] linked {link} -> ../premium")
+        except OSError as e:
+            print(f"[dev] could not link premium/: {e}")
+    elif os.path.islink(link):
+        os.unlink(link)
+        print(f"[dev] unlinked {link} (free mode)")
+    elif os.path.exists(link):
+        print(f"[dev] {link} is a real directory, not a link -- can't switch to free mode")
 
 
 def _add_pure_wheels():
@@ -68,7 +89,7 @@ def load():
     if REPO not in sys.path:
         sys.path.insert(0, REPO)
     _add_pure_wheels()
-    _ensure_premium_link()
+    _set_premium_link(premium_enabled)
     addon_utils.enable(ADDON, default_set=True, persistent=True)
 
 
@@ -82,10 +103,16 @@ def reload():
     for name in [n for n in list(sys.modules)
                  if n == ADDON or n.startswith(ADDON + ".")]:
         del sys.modules[name]
+    _set_premium_link(premium_enabled)
     importlib.invalidate_caches()
 
     addon_utils.enable(ADDON, default_set=True, persistent=True)
-    print("[dev] TrailPrint3D reloaded")
+    print(f"[dev] TrailPrint3D reloaded ({_mode()})")
+
+
+def _mode():
+    from TrailPrint3D import temp
+    return "premium" if temp.PREMIUMVERSION else "free"
 
 
 class TP3D_OT_dev_reload(bpy.types.Operator):
@@ -98,6 +125,21 @@ class TP3D_OT_dev_reload(bpy.types.Operator):
             for area in win.screen.areas:
                 area.tag_redraw()
         self.report({'INFO'}, "TrailPrint3D reloaded")
+        return {'FINISHED'}
+
+
+class TP3D_OT_dev_toggle_premium(bpy.types.Operator):
+    bl_idname = "tp3d.dev_toggle_premium"
+    bl_label = "Toggle Free / Premium (dev)"
+
+    def execute(self, context):
+        global premium_enabled
+        premium_enabled = not premium_enabled
+        reload()
+        for win in context.window_manager.windows:
+            for area in win.screen.areas:
+                area.tag_redraw()
+        self.report({'INFO'}, f"TrailPrint3D reloaded as {_mode()}")
         return {'FINISHED'}
 
 
@@ -140,8 +182,10 @@ def main():
     if kc:
         km = kc.keymaps.new(name="Window", space_type='EMPTY')
         km.keymap_items.new(TP3D_OT_dev_reload.bl_idname, 'F8', 'PRESS')
+        km.keymap_items.new(TP3D_OT_dev_toggle_premium.bl_idname, 'F8', 'PRESS', shift=True)
 
-    print(f"[dev] TrailPrint3D loaded from {ADDON_DIR} -- press F8 to reload")
+    print(f"[dev] TrailPrint3D loaded from {ADDON_DIR} as {_mode()} -- "
+          f"F8 reloads, Shift+F8 switches free/premium")
 
     if os.environ.get("TP3D_AUTORELOAD") == "1":
         global _mtimes
@@ -151,4 +195,5 @@ def main():
 
 
 bpy.utils.register_class(TP3D_OT_dev_reload)
+bpy.utils.register_class(TP3D_OT_dev_toggle_premium)
 main()
