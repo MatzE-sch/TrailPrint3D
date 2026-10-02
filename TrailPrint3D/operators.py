@@ -21,6 +21,7 @@ from mathutils import Euler, Quaternion, Vector  # type: ignore
 from . import addon_preferences, export, utils
 from . import constants as const
 from . import progress as _progress
+from .utils.regenerate import replaces_previous_generation, replacing_previous_generation
 
 
 # Define the operator (script execution)
@@ -29,6 +30,7 @@ class TP3D_OT_run_generation(bpy.types.Operator):
     bl_label = "Generate"
     bl_description = "Generate the Path and the Map with current Settings"
 
+    @replaces_previous_generation
     def execute(self, context):
         if context.scene.tp3d.elementMode == 'CREATE_TEXTURE':
             from .threemf_discovery import is_threemf_available, has_threemf_capability
@@ -3099,7 +3101,8 @@ class TP3D_OT_map_generator(bpy.types.Operator):
 
         try:
             data = json.loads(rp.read_text(encoding='utf-8'))
-            self._apply_result(context, data)
+            with replacing_previous_generation():
+                self._apply_result(context, data)
         except Exception as exc:  # noqa: BLE001 - Wide exception catch for map result application
             import traceback
             traceback.print_exc()
