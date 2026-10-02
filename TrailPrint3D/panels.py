@@ -55,6 +55,16 @@ def construct_popover(layout, panel, text="", icon="QUESTION", direction="HORIZO
     layout.popover(panel=panel, text=text, icon=icon, direction=direction)
 
 
+class TP3D_UL_pois(bpy.types.UIList):
+    bl_idname = "TP3D_UL_pois"
+
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        row = layout.row(align=True)
+        row.prop(item, "enabled", text="")
+        row.prop(item, "name", text="", emboss=False, icon="PINNED")
+        row.prop(item, "direction", text="")
+
+
 class TP3D_UL_road_types(bpy.types.UIList):
     """Plain checkbox list of road tiers -- no add/remove, list only."""
 
@@ -923,10 +933,17 @@ class TP3D_PT_advanced(bpy.types.Panel):
             )
             if props.pinCutout:
                 box.prop(props, "pinCutoutClearance")
+                draw_wrapped_label(
+                    box,
+                    context,
+                    _(
+                        "New pins cut a socket into the map and elements at their position"
+                    ),
+                )
 
         # --- POINTS OF INTEREST ---
-        # Labelled POI frame (Premium): POIs are placed in the Map Generator
-        # or at the 3D cursor; the list/operators are registered by premium/.
+        # Labelled POI frame (utils/poi_frame.py): POIs are placed in the Map
+        # Generator or at the 3D cursor.
         layout.prop(
             props,
             "show_poi",
@@ -935,41 +952,31 @@ class TP3D_PT_advanced(bpy.types.Panel):
         )
         if props.show_poi:
             box = layout.box()
-            if not temp.PREMIUMVERSION:
-                box.operator("tp3d.terrain_dummy", text=_("POI Label Frame"), icon="LOCKED")
-            else:
-                row = box.row()
-                row.template_list("TP3D_UL_pois", "", props, "pois", props, "poi_index", rows=3)
-                col = row.column(align=True)
-                col.operator("tp3d.poi_add", text="", icon="ADD")
-                col.operator("tp3d.poi_remove", text="", icon="REMOVE")
-                if 0 <= props.poi_index < len(props.pois):
-                    poi = props.pois[props.poi_index]
-                    row = box.row(align=True)
-                    row.prop(poi, "lat", text=_("Lat"))
-                    row.prop(poi, "lon", text=_("Lon"))
-                    if poi.direction == "CUSTOM":
-                        box.prop(poi, "angle")
+            row = box.row()
+            row.template_list("TP3D_UL_pois", "", props, "pois", props, "poi_index", rows=3)
+            col = row.column(align=True)
+            col.operator("tp3d.poi_add", text="", icon="ADD")
+            col.operator("tp3d.poi_remove", text="", icon="REMOVE")
+            if 0 <= props.poi_index < len(props.pois):
+                poi = props.pois[props.poi_index]
+                row = box.row(align=True)
+                row.prop(poi, "lat", text=_("Lat"))
+                row.prop(poi, "lon", text=_("Lon"))
+                if poi.direction == "CUSTOM":
+                    box.prop(poi, "angle")
 
-                row = box.row()
-                row.label(text=_("Frame Settings"))
-                row.operator("tp3d.poi_reset_settings", text="", icon="LOOP_BACK")
-                col = box.column(align=True)
-                col.prop(props, "poi_frameWall")
-                col.prop(props, "poi_bridgeWidth")
-                col.prop(props, "poi_tipWidth")
-                col.prop(props, "poi_thickness")
-                col.prop(props, "poi_labelSize")
-                col.prop(props, "poi_textDepth")
-                col.prop(props, "poi_clearance")
-                box.operator("tp3d.poi_frame", icon="MOD_BUILD")
-                draw_wrapped_label(
-                    box,
-                    context,
-                    _(
-                        "New pins cut a socket into the map and elements at their position"
-                    ),
-                )
+            row = box.row()
+            row.label(text=_("Frame Settings"))
+            row.operator("tp3d.poi_reset_settings", text="", icon="LOOP_BACK")
+            col = box.column(align=True)
+            col.prop(props, "poi_frameWall")
+            col.prop(props, "poi_bridgeWidth")
+            col.prop(props, "poi_tipWidth")
+            col.prop(props, "poi_thickness")
+            col.prop(props, "poi_labelSize")
+            col.prop(props, "poi_textDepth")
+            col.prop(props, "poi_clearance")
+            box.operator("tp3d.poi_frame", icon="MOD_BUILD")
 
         # --- SPECIAL ---
         layout.prop(

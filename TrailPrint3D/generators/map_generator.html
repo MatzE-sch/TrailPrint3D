@@ -54,6 +54,21 @@
         <div id="gpxList" style="display:none; font-size:11px; color:#aaa; line-height:1.8;"></div>
         <button id="clearGpx" style="display:none; padding:5px 10px; background:#2a1e1e; color:#cc6666; border:1px solid #553333; border-radius:4px; cursor:pointer; font-size:11px;">Clear GPX</button>
         <hr class="sidebar-divider">
+        <button id="addPoi" title="Click the map to place a point of interest (Esc to stop)">Add POI</button>
+        <div id="poiList"></div>
+        <label id="poiFrameRow" style="display:none; font-size: 12px; color: #aaa; align-items: center; gap: 6px;">
+            <input type="checkbox" id="poiFrameCheck" checked style="accent-color: #007bff;"> Generate label frame
+        </label>
+        <details id="poiSettingsSection" class="poi-settings" style="display:none;">
+            <summary>Label frame settings</summary>
+            <div class="poi-settings-body">
+                <div class="field-row"><label for="poiFrameWidth">Frame wall (mm)</label><input type="number" id="poiFrameWidth" min="0.3" max="20" step="0.1" value="1"></div>
+                <div class="field-row"><label for="poiTextSize">Text size (mm)</label><input type="number" id="poiTextSize" min="1" max="15" step="0.1" value="3.75"></div>
+                <div class="field-row"><label for="poiBridgeWidth" title="0 = sized to fit the text">Bridge width (mm)</label><input type="number" id="poiBridgeWidth" min="0" max="20" step="0.5" value="0"></div>
+                <div style="font-size: 10px; color: #777;">Drag the yellow handle at a bridge's frame end to set its angle; double-click it for the shortest path. Right-click a POI for more.</div>
+            </div>
+        </details>
+        <hr class="sidebar-divider">
         <div style="font-size:12px; color:#aaa; margin-bottom:-7px;">Shape</div>
         <div id="shapeToggle">
             <button class="shape-btn icon-btn active" data-shape="rectangle" title="Rectangle">
@@ -130,6 +145,7 @@
             <div class="legend-row"><span class="legend-swatch" style="background:#9b59b6;"></span>Existing map</div>
             <div class="legend-row"><span class="legend-swatch line" style="border-color:#9b59b6;"></span>Existing trail</div>
             <div class="legend-row"><span class="legend-swatch line" style="border-color:red;"></span>Imported GPX</div>
+            <div class="legend-row"><span class="legend-swatch" style="background:#ffd24d; border-radius:50%;"></span>Point of interest</div>
         </div>
     </div>
     </div>
@@ -175,6 +191,8 @@
         var geojsonPaths = [];
         var geojsonNames = [];
         var existingMaps = [];
+        var pois = []; // POIs: { name, lat, lon, angle (deg|null), enabled, marker } -- see assets/poi_layer.js
+        var poiMode = false;
         var svgShapePath = null; // temp-file path returned by /upload_svg, or null
         var svgShapeName = null;
         var svgAspect = 1; // width/height parsed from the imported SVG's own viewBox/width+height
@@ -328,7 +346,9 @@
                 gpxPaths: gpxPaths,
                 gpxNames: gpxNames,
                 points: tp3dLocationPointsState(),
-                sizeScale: tp3dSizeScaleState()
+                sizeScale: tp3dSizeScaleState(),
+                pois: poisPayload(),
+                poiFrame: document.getElementById('poiFrameCheck').checked
             };
         }
 
@@ -419,6 +439,8 @@
                     }
                     if (s.objSize != null) document.getElementById('objSizeInput').value = s.objSize;
                     if (s.points) tp3dRestoreLocationPoints(s.points);
+                    if (s.poiFrame != null) document.getElementById('poiFrameCheck').checked = s.poiFrame;
+                    if (s.pois) setPois(s.pois);
                     if (s.gpxPaths && s.gpxPaths.length) {
                         gpxPaths = s.gpxPaths;
                         gpxNames = s.gpxNames || [];
@@ -479,9 +501,12 @@
                 .then(function(s) {
                     console.log('[TP3D picker] /get_state returned:', s);
                     tp3dApplyStateSnapshot(s);
-                    tp3dUndoBaseline();
                 })
-                .catch(function() { updateSendState(); updateStatus(); tp3dUndoBaseline(); });
+                .catch(function() { updateSendState(); updateStatus(); })
+                // Blender's POI list wins over the page's saved copy; only
+                // then does undo history start.
+                .then(loadPoiState)
+                .then(function() { tp3dUndoBaseline(); });
         }
 
         function loadExistingMaps() {
@@ -584,7 +609,7 @@
             return L.rectangle([[bounds.south, bounds.west], [bounds.north, bounds.east]], style);
         }
 
-        function tp3dOnShapeChanged() { renderShapePreview(); }
+        function tp3dOnShapeChanged() { renderShapePreview(); renderPoiPreview(); }
         function tp3dRectStyle() {
             return { weight: currentShape === 'rectangle' ? 3 : 2, fill: currentShape === 'rectangle', fillOpacity: 0.3 };
         }
@@ -634,7 +659,7 @@
         // a comment -- picker_server.py substitutes every occurrence.
 
         function updateSendState() {
-            var ready = !!coords || geojsonPaths.length > 0;
+            var ready = !!coords || geojsonPaths.length > 0 || pois.length > 0;
             document.getElementById('send').disabled = !ready;
         }
 
@@ -645,17 +670,21 @@
             var nGpx = gpxPaths.length;
             var nGeojson = geojsonPaths.length;
             var extraSuffix = nGpx ? (' + ' + nGpx + ' trail(s)') : '';
+            if (pois.length) extraSuffix += ' + ' + pois.length + ' POI(s)';
             if (coords) {
                 document.getElementById('status').textContent = 'Area ready' + extraSuffix + '.';
             } else if (nGeojson) {
                 document.getElementById('status').textContent = 'GeoJSON boundary ready' + extraSuffix + '.';
             } else if (nGpx) {
                 document.getElementById('status').textContent = nGpx + ' trail(s) imported — draw a shape or import a GeoJSON boundary to send.';
+            } else if (pois.length) {
+                document.getElementById('status').textContent = pois.length + ' POI(s) — send to label the maps already in Blender, or draw a shape.';
             } else if (currentShape === 'svg' && svgShapePath) {
                 document.getElementById('status').textContent = 'SVG shape imported — draw an area to place it.';
             } else {
                 document.getElementById('status').textContent = 'Draw a shape to begin.';
             }
+            renderPoiPreview();
         }
 
         function bindLiveEdit(layer) {
@@ -939,6 +968,7 @@
         });
 
         document.getElementById('drawBtn').addEventListener('click', function() {
+            setPoiMode(false);
             armDraw();
         });
 
@@ -1097,8 +1127,11 @@
 
         __PREFETCH_JS__
 
+        __POI_LAYER_JS__
+
         document.getElementById('send').onclick = function() {
-            if (!coords && geojsonPaths.length === 0) return;
+            // POIs alone are a valid send: they label the maps already in Blender.
+            if (!coords && geojsonPaths.length === 0 && pois.length === 0) return;
 
             var payload = {
                 gpx_paths: gpxPaths,
@@ -1109,7 +1142,11 @@
                 svg_path: svgShapePath,
                 excluded_ids: tp3dPrefetchExcludedIds(),
                 resolution: parseInt(document.getElementById('resolutionSlider').value) || 4,
-                objSize: parseFloat(document.getElementById('objSizeInput').value) || 100
+                objSize: parseFloat(document.getElementById('objSizeInput').value) || 100,
+                // POI label frame -- see utils/poi_frame.py.
+                pois: poisPayload(),
+                poiFrame: document.getElementById('poiFrameCheck').checked,
+                poiSettings: editedPoiSettings()
             };
 
             if (coords) {

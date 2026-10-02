@@ -212,7 +212,7 @@ POI_DIRECTION_ITEMS = [
 
 
 class TP3D_PG_poi(bpy.types.PropertyGroup):
-    """One point of interest for the (Premium) POI label frame."""
+    """One point of interest for the POI label frame (utils/poi_frame.py)."""
 
     name: StringProperty(name=_("Label"), default="", description=_("Text shown on the POI's bridge"))  # type: ignore
     lat: FloatProperty(name=_("Latitude"), default=0.0, precision=6)  # type: ignore
@@ -1470,7 +1470,7 @@ class TP3D_PG_properties(bpy.types.PropertyGroup):
         ),
     )  # type: ignore
 
-    # Points of interest + POI label frame settings (the frame itself is Premium).
+    # Points of interest + POI label frame settings (utils/poi_frame.py).
     pois: CollectionProperty(type=TP3D_PG_poi)  # type: ignore
     poi_index: IntProperty(name="POI Index", default=0)  # type: ignore
     poi_frameWall: FloatProperty(name=_("Frame Wall (mm)"), default=1.0, min=0.3, soft_max=10.0, description=_("Thickness of the frame wall running along the map edge"))  # type: ignore

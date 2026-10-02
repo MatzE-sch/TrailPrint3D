@@ -457,3 +457,27 @@ button.element-chip:active { background: rgba(255,255,255,0.16); }
 .lock-label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
 .lock-label input { accent-color: #007bff; margin: 0; }
 .field-row input[type=number]:read-only { color: #888; background: #222; border-style: dashed; }
+
+/* Points of interest + label-frame preview (poi_layer.js). The labels use
+   the font Blender builds them with, served at /poi_font. */
+@font-face { font-family: 'TP3DPoiFont'; src: url('/poi_font'); }
+#addPoi { padding: 12px 20px; background: #8a6a1a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+#addPoi.active { background: #b8860b; outline: 2px solid #ffd24d; }
+#map.poi-mode, #map.poi-mode .leaflet-interactive { cursor: crosshair !important; }
+#poiList { display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
+.poi-row { display: flex; align-items: center; gap: 4px; }
+.poi-row .poi-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: #ddd; cursor: pointer; }
+.poi-row .poi-name:hover { color: #ffd24d; }
+.poi-row button { padding: 0 6px; background: #2a1e1e; color: #cc6666; border: 1px solid #553333;
+    border-radius: 3px; cursor: pointer; font-size: 11px; line-height: 16px; }
+.poi-label { background: rgba(26,26,26,0.85); color: #ffd24d; border: 1px solid #b8860b;
+    font-weight: bold; box-shadow: none; }
+.poi-label::before { display: none; }
+.poi-dot { width: 12px; height: 12px; border-radius: 50%; background: #ffd24d; border: 2px solid #1a1a1a;
+    box-shadow: 0 0 3px rgba(0,0,0,0.7); }
+.poi-handle { width: 14px; height: 14px; border-radius: 50%; background: #1a1a1a; border: 3px solid #ffd24d;
+    box-shadow: 0 0 3px rgba(0,0,0,0.8); cursor: grab; }
+.poi-settings { border: 1px solid #444; border-radius: 4px; }
+.poi-settings summary { padding: 6px 10px; font-size: 12px; color: #ccc; cursor: pointer; }
+.poi-settings .poi-settings-body { padding: 0 10px 10px; display: flex; flex-direction: column; gap: 4px; }

@@ -129,3 +129,13 @@ if (typeof tp3dSizeScaleState === 'function') {
         tp3dRestoreSizeScale(v.state);
     });
 }
+// Map Generator: points of interest and the frame checkbox (poi_layer.js).
+if (typeof poisPayload === 'function') {
+    tp3dUndoRegister('pois', function() {
+        return { list: poisPayload(), frame: document.getElementById('poiFrameCheck').checked };
+    }, function(v) {
+        document.getElementById('poiFrameCheck').checked = v.frame;
+        setPois(v.list);
+        pois.forEach(refreshPoiMarker);
+    });
+}

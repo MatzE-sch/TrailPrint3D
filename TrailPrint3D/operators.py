@@ -3047,14 +3047,94 @@ class TP3D_OT_puzzle_configurator(bpy.types.Operator):
         return {'FINISHED'}
 
 
-def _premium_poi_frame():
-    """The Premium POI label frame module (premium/poi_frame_pe.py), or None
-    on a free build -- never imported at module level (see AGENTS.md §15)."""
-    try:
-        from .premium import poi_frame_pe  # type: ignore[import]
-    except ImportError:
-        return None
-    return poi_frame_pe
+# ---------------------------------------------------------------------------
+# POI label frame (see utils/poi_frame.py)
+# ---------------------------------------------------------------------------
+
+class TP3D_OT_poi_frame(bpy.types.Operator):
+    bl_idname = "tp3d.poi_frame"
+    bl_label = _("Generate POI Frame")
+    bl_description = _("Build a frame with labelled bridges pointing at the POIs, "
+                       "shaped to sit on the terrain (print it upside down)")
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        from .utils import poi_frame
+
+        maps = poi_frame.map_objects_for_poi(context)
+        if not maps:
+            self.report({'ERROR'}, _("No map found in the scene."))
+            return {'CANCELLED'}
+        try:
+            built, warnings = poi_frame.generate_poi_frames(context.scene.tp3d, maps)
+        except ImportError as e:
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+        for w in warnings:
+            self.report({'WARNING'}, w)
+        if not built:
+            self.report({'ERROR'}, _("No POI frame generated — are the POIs inside a map?"))
+            return {'CANCELLED'}
+        self.report({'INFO'}, _("Generated {} POI frame(s)").format(len(built)))
+        return {'FINISHED'}
+
+
+class TP3D_OT_poi_reset_settings(bpy.types.Operator):
+    bl_idname = "tp3d.poi_reset_settings"
+    bl_label = _("Reset POI Frame Settings")
+    bl_description = _("Reset all POI frame settings to their defaults")
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        from .utils import poi_frame
+
+        tp3d = context.scene.tp3d
+        for prop in poi_frame.POI_SETTING_PROPS:
+            tp3d.property_unset(prop)
+        return {'FINISHED'}
+
+
+class TP3D_OT_poi_add(bpy.types.Operator):
+    bl_idname = "tp3d.poi_add"
+    bl_label = _("Add POI at 3D Cursor")
+    bl_description = _("Add a point of interest at the 3D cursor's position")
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        from .utils import poi_frame
+
+        tp3d = context.scene.tp3d
+        # The active map's own scale, else any map's -- the scene-level value
+        # only matches whichever map was generated last.
+        maps = [context.active_object] + list(context.scene.objects)
+        scale_hor = next((o.get("Horizontal Scale") for o in maps
+                          if o is not None and poi_frame._is_map(o) and o.get("Horizontal Scale")), None)
+        if not scale_hor:
+            self.report({'ERROR'}, _("Generate a map first."))
+            return {'CANCELLED'}
+        cursor = context.scene.cursor.location
+        poi = tp3d.pois.add()
+        poi.lon = math.degrees(cursor.x / (const.R * scale_hor))
+        poi.lat = math.degrees(2 * math.atan(math.exp(cursor.y / (const.R * scale_hor))) - math.pi / 2)
+        poi.name = f"POI {len(tp3d.pois)}"
+        tp3d.poi_index = len(tp3d.pois) - 1
+        return {'FINISHED'}
+
+
+class TP3D_OT_poi_remove(bpy.types.Operator):
+    bl_idname = "tp3d.poi_remove"
+    bl_label = _("Remove POI")
+    bl_description = _("Remove the selected point of interest from the list")
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        tp3d = context.scene.tp3d
+        if not (0 <= tp3d.poi_index < len(tp3d.pois)):
+            self.report({'ERROR'}, _("No POI selected."))
+            return {'CANCELLED'}
+        tp3d.pois.remove(tp3d.poi_index)
+        tp3d.poi_index = min(tp3d.poi_index, len(tp3d.pois) - 1)
+        return {'FINISHED'}
 
 
 class TP3D_OT_map_generator(bpy.types.Operator):
@@ -3148,9 +3228,9 @@ class TP3D_OT_map_generator(bpy.types.Operator):
         # multi-file GPX input (see its gpxInput element).
         html_filename = 'premium/generators/map_generator_pe.html' if temp.PREMIUMVERSION else 'generators/map_generator.html'
         html_path = pathlib.Path(__file__).parent / html_filename
-        # Points of interest + label-frame preview (Premium only).
-        poi_module = _premium_poi_frame()
-        poi_state = poi_module.poi_state_for_picker(context.scene.tp3d) if poi_module else None
+        # Points of interest + label-frame preview (utils/poi_frame.py).
+        from .utils import poi_frame
+        poi_state = poi_frame.poi_state_for_picker(context.scene.tp3d)
         self._server = mp.start_picker(
             self._result_path,
             existing_maps=_collect_existing_maps(),
@@ -3270,12 +3350,12 @@ class TP3D_OT_map_generator(bpy.types.Operator):
         bounds = data.get('bounds')
         gpx_paths = data.get('gpx_paths', [])
         geojson_paths = data.get('geojson_paths', [])
-        poi_module = _premium_poi_frame()
+        from .utils import poi_frame
 
         if not bounds and not gpx_paths and not geojson_paths:
-            if poi_module and data.get('pois'):
+            if data.get('pois'):
                 # POI-only send: label the maps already in the scene.
-                poi_module.apply_picker_result(context, data, [], overlay, 0.1)
+                poi_frame.apply_picker_result(context, data, [], overlay, 0.1)
                 self.report({'INFO'}, f"Stored {len(props.pois)} POI(s)")
                 return
             self.report({'WARNING'}, "Nothing to generate — draw a shape first")
@@ -3566,10 +3646,9 @@ class TP3D_OT_map_generator(bpy.types.Operator):
             bpy.context.view_layer.objects.active = blank
             utils._rg_export(tile_gen)
 
-        # POI label frame (Premium) on the finished tile -- a separate part,
-        # built after the export above so it isn't merged into the map file.
-        if poi_module:
-            poi_module.apply_picker_result(context, data, [blank], overlay, 0.995)
+        # POI label frame on the finished tile -- a separate part, built
+        # after the export above so it isn't merged into the map file.
+        poi_frame.apply_picker_result(context, data, [blank], overlay, 0.995)
 
         bpy.context.scene.tp3d["o_time"] = f"Script ran for {time.time() - start_time:.0f} seconds"
         export.save_history_thumbnail(data.get('history_id'), [blank])

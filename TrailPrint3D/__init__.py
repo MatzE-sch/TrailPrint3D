@@ -86,6 +86,11 @@ classes = [
     operators.TP3D_OT_special_collection,
     operators.TP3D_OT_append_collection,
     operators.TP3D_OT_append_collection_blank,
+    panels.TP3D_UL_pois,
+    operators.TP3D_OT_poi_frame,
+    operators.TP3D_OT_poi_reset_settings,
+    operators.TP3D_OT_poi_add,
+    operators.TP3D_OT_poi_remove,
 ]
 
 _PREMIUM_CLASS_NAMES = [
@@ -105,11 +110,6 @@ _PREMIUM_CLASS_NAMES = [
     "TP3D_OT_popup_heightmap",
     "TP3D_OT_map_picker",
     "TP3D_OT_sliding_puzzle_configurator",
-    "TP3D_UL_pois",
-    "TP3D_OT_poi_frame",
-    "TP3D_OT_poi_reset_settings",
-    "TP3D_OT_poi_add",
-    "TP3D_OT_poi_remove",
 ]
 
 

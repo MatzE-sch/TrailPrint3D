@@ -192,6 +192,7 @@ _SHAPE_EXTRAS_JS_PATH = _ASSETS_DIR / 'shape_extras.js'
 _HISTORY_PANEL_JS_PATH = _ASSETS_DIR / 'history_panel.js'
 _UNDO_HISTORY_JS_PATH = _ASSETS_DIR / 'undo_history.js'
 _MAP_TOOLS_JS_PATH = _ASSETS_DIR / 'map_tools.js'
+_POI_LAYER_JS_PATH = _ASSETS_DIR / 'poi_layer.js'
 
 _element_icons_js_cache: str | None = None
 
@@ -595,7 +596,7 @@ class _Handler(BaseHTTPRequestHandler):
             return
         if self.path == '/get_poi_state':
             # Points of interest + label-frame settings for a page that
-            # previews the (Premium) POI frame -- see start_picker's poi_state.
+            # previews the POI frame -- see start_picker's poi_state.
             body = self.poi_state_json
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -732,6 +733,7 @@ class _Handler(BaseHTTPRequestHandler):
             .replace('__PREFETCH_JS__', _PREFETCH_JS_PATH.read_text(encoding='utf-8'))
             .replace('__SHAPE_EXTRAS_JS__', _SHAPE_EXTRAS_JS_PATH.read_text(encoding='utf-8'))
             .replace('__MAP_TOOLS_JS__', _MAP_TOOLS_JS_PATH.read_text(encoding='utf-8'))
+            .replace('__POI_LAYER_JS__', _POI_LAYER_JS_PATH.read_text(encoding='utf-8'))
             .replace('__UNDO_HISTORY_JS__', _UNDO_HISTORY_JS_PATH.read_text(encoding='utf-8'))
             .encode('utf-8')
         )
@@ -1097,8 +1099,8 @@ def start_picker(result_path: str, existing_maps: list | None = None, existing_t
     the OSM and WorldCover chip/card sets.
 
     *poi_state*, if given, is {"pois": [...], "settings": {...}, "fontPath": str}
-    -- the scene's points of interest and POI-frame settings (built by the
-    Premium POI frame code), served on GET /get_poi_state with the label font
+    -- the scene's points of interest and POI-frame settings (built by
+    utils.poi_frame.poi_state_for_picker), served on GET /get_poi_state with the label font
     on GET /poi_font, so a page can preview the frame the way Blender builds it.
     """
     global _active_server, _pending_toggles, _pending_settings, _pending_advanced_settings, _pending_prefetch
