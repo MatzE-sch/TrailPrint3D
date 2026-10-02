@@ -82,11 +82,22 @@ def _remove(obj):
 
 def _strip_suffixes(objs):
     """Give new objects back their plain names ("Rectangle.001" -> "Rectangle")
-    once the replaced originals are gone."""
+    once the replaced originals are gone -- including names derived from a
+    renamed object ("Rectangle.001_POI_Frame" -> "Rectangle_POI_Frame")."""
+    renamed = {}
     for obj in objs:
         m = _SUFFIX.match(obj.name)
         if m and m.group(1) not in bpy.data.objects:
+            renamed[obj.name] = m.group(1)
             obj.name = m.group(1)
+    for old, new in renamed.items():
+        for obj in objs:
+            if obj.name.startswith(old + "_"):
+                derived = new + obj.name[len(old):]
+                if derived not in bpy.data.objects:
+                    obj.name = derived
+            if obj.get("poiMap") == old:
+                obj["poiMap"] = new
 
 
 def replace_previous(new_objs):
